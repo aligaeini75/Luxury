@@ -12,11 +12,26 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Unpack uploaded project zip if needed
+        shell: bash
+        run: |
+          if [ ! -d "frontend" ] || [ ! -d "backend" ]; then
+            ZIP_FILE="$(ls luxora-*-build-verified.zip 2>/dev/null | head -n 1 || true)"
+            if [ -z "$ZIP_FILE" ]; then
+              echo "No frontend/backend folders and no luxora zip found."
+              exit 1
+            fi
+            echo "Unpacking $ZIP_FILE"
+            unzip -o "$ZIP_FILE"
+          fi
+          test -d frontend
+          test -d backend
 
       - name: Setup Node
         uses: actions/setup-node@v4
