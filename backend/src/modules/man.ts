@@ -6,11 +6,15 @@ import type { Env } from '../index'
 export const manRoutes = new Hono<{ Bindings: Env; Variables: { user: any } }>()
 manRoutes.use('*', auth)
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
 
 async function loadWomanProfileForMan(c: any, womanIdOrProfileId: string, manId: string) {
   const profile: any = await c.env.DB.prepare('SELECT * FROM woman_profiles WHERE user_id=? OR id=?').bind(womanIdOrProfileId, womanIdOrProfileId).first()
   if (!profile) return null
   const t = now()
+  const today = todayISO()
   const galleries: any[] = (await c.env.DB.prepare(`SELECT g.*, (SELECT COUNT(*) FROM woman_gallery_media m WHERE m.gallery_id=g.id) media_count FROM woman_galleries g WHERE g.woman_id=? AND g.status='active' ORDER BY g.created_at DESC`).bind(profile.user_id).all()).results as any[]
   for (const g of galleries) {
     const sub: any = await c.env.DB.prepare(`SELECT * FROM woman_gallery_subscriptions WHERE gallery_id=? AND man_id=? AND status='active' AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`).bind(g.id, manId, t).first()
@@ -20,7 +24,14 @@ async function loadWomanProfileForMan(c: any, womanIdOrProfileId: string, manId:
   }
   const services = (await c.env.DB.prepare('SELECT * FROM woman_services WHERE woman_id=? AND is_active=1 ORDER BY created_at DESC').bind(profile.user_id).all()).results
   const locations = (await c.env.DB.prepare('SELECT * FROM woman_locations WHERE woman_id=? AND is_active=1 ORDER BY date DESC').bind(profile.user_id).all()).results
-  const availability = (await c.env.DB.prepare('SELECT * FROM woman_availability WHERE woman_id=? AND is_booked=0 ORDER BY date ASC,start_time ASC').bind(profile.user_id).all()).results
+  const availability = (await c.env.DB.prepare(`
+    SELECT * FROM woman_availability
+    WHERE woman_id=?
+      AND is_booked=0
+      AND date >= ?
+      AND COALESCE(status, 'active')='active'
+    ORDER BY date ASC,start_time ASC
+  `).bind(profile.user_id, today).all()).results
   return { profile, gallery: galleries, services, locations, availability }
 }
 
@@ -72,7 +83,19 @@ manRoutes.post('/interests', async c => {
 })
 
 manRoutes.get('/women', async c => {
-  const women = (await c.env.DB.prepare(`SELECT wp.*, (SELECT COUNT(*) FROM woman_availability av WHERE av.woman_id=wp.user_id AND av.is_booked=0) open_slots FROM woman_profiles wp WHERE wp.is_active=1 ORDER BY wp.verified DESC, wp.public_price DESC`).all()).results
+  const today = todayISO()
+  const women = (await c.env.DB.prepare(`
+    SELECT wp.*, (
+      SELECT COUNT(*) FROM woman_availability av
+      WHERE av.woman_id=wp.user_id
+        AND av.is_booked=0
+        AND av.date >= ?
+        AND COALESCE(av.status, 'active')='active'
+    ) open_slots
+    FROM woman_profiles wp
+    WHERE wp.is_active=1
+    ORDER BY wp.verified DESC, open_slots DESC, wp.public_price DESC
+  `).bind(today).all()).results
   return c.json({ women })
 })
 
@@ -81,7 +104,6 @@ manRoutes.get('/requests', async c => {
   const requests = (await c.env.DB.prepare('SELECT * FROM booking_requests WHERE man_id=? ORDER BY created_at DESC').bind(u.id).all()).results
   return c.json({ requests })
 })
-
 
 manRoutes.get('/women/:id', async c => {
   const u = c.get('user')
@@ -161,9 +183,17 @@ manRoutes.post('/galleries/:id/subscribe', async c => {
 manRoutes.post('/requests', async c => {
   const u = c.get('user'); const b:any = await c.req.json(); const t=now()
   const type = ['date','chat','video_call'].includes(String(b.booking_type)) ? String(b.booking_type) : 'date'
-  const slot:any = b.availability_id ? await c.env.DB.prepare('SELECT * FROM woman_availability WHERE id=? AND woman_id=? AND is_booked=0').bind(String(b.availability_id), String(b.woman_id)).first() : null
+  const today = todayISO()
+  const slot:any = b.availability_id ? await c.env.DB.prepare(`
+    SELECT * FROM woman_availability
+    WHERE id=?
+      AND woman_id=?
+      AND is_booked=0
+      AND date >= ?
+      AND COALESCE(status, 'active')='active'
+  `).bind(String(b.availability_id), String(b.woman_id), today).first() : null
   if (!slot) return c.json({ error: 'Selected slot is not available anymore' }, 409)
-  const amount = Number(b.offer_amount || slot.price_override || 0)
+  const amount = Number(b.offer_amount || slot.total_price || slot.price_override || 0)
   const wallet: any = await c.env.DB.prepare('SELECT * FROM wallets WHERE user_id=?').bind(u.id).first()
   if (amount > 0 && Number(wallet?.balance || 0) < amount) return c.json({ error: 'Insufficient wallet balance for this request', required: amount, balance: Number(wallet?.balance || 0) }, 402)
 
