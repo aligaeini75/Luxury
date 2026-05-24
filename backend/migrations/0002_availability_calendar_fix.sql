@@ -1,9 +1,6 @@
-ALTER TABLE woman_availability ADD COLUMN location_title TEXT NOT NULL DEFAULT '';
-ALTER TABLE woman_availability ADD COLUMN location_hint TEXT NOT NULL DEFAULT '';
-ALTER TABLE woman_availability ADD COLUMN location_photos_json TEXT NOT NULL DEFAULT '[]';
-ALTER TABLE woman_availability ADD COLUMN services_json TEXT NOT NULL DEFAULT '[]';
-ALTER TABLE woman_availability ADD COLUMN total_price REAL NOT NULL DEFAULT 0;
-ALTER TABLE woman_availability ADD COLUMN status TEXT NOT NULL DEFAULT 'active';
+-- Production-safe follow-up migration.
+-- The availability metadata columns already exist on the remote D1 database, so this file only repairs data,
+-- adds demo calendar slots, and creates indexes. Keeping ALTER TABLE here would fail on duplicate columns.
 
 UPDATE woman_availability
 SET date = substr(date, 1, 10)
