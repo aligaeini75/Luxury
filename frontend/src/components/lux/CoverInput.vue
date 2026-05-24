@@ -1,6 +1,10 @@
 <script setup lang="ts">
 defineProps<{ label: string; subtitle?: string; modelValue: string | number; image?: string; type?: string; placeholder?: string }>()
-defineEmits(['update:modelValue'])
+const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
+
+function onInput(e: Event) {
+  emit('update:modelValue', (e.target as HTMLInputElement).value)
+}
 </script>
 
 <template>
@@ -17,7 +21,7 @@ defineEmits(['update:modelValue'])
         :value="modelValue"
         :placeholder="placeholder"
         class="mt-6 w-full rounded-2xl border border-white/10 bg-black/55 px-5 py-4 text-xl font-black text-white outline-none focus:border-gold"
-        @input="emit('update:modelValue', (event.target as HTMLInputElement).value)"
+        @input="onInput"
       />
     </div>
   </label>
