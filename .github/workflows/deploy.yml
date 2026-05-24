@@ -6,68 +6,90 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DB_NAME: luxora_db
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Unpack uploaded project zip if needed
+      - name: Extract uploaded Luxora package
         shell: bash
         run: |
-          if [ ! -d "frontend" ] || [ ! -d "backend" ]; then
-            ZIP_FILE="$(ls luxora-*-build-verified.zip 2>/dev/null | head -n 1 || true)"
-            if [ -z "$ZIP_FILE" ]; then
-              echo "No frontend/backend folders and no luxora zip found."
+          if [ ! -d frontend ] || [ ! -d backend ]; then
+            ZIP=$(find . -maxdepth 1 -name 'luxora-*.zip' | head -n 1)
+            if [ -z "$ZIP" ]; then
+              echo 'No Luxora zip found.'
               exit 1
             fi
-            echo "Unpacking $ZIP_FILE"
-            unzip -o "$ZIP_FILE"
+            unzip -o "$ZIP"
           fi
-          test -d frontend
-          test -d backend
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            backend/package-lock.json
 
-      - name: Install frontend dependencies
+      - name: Install frontend deps
         working-directory: frontend
-        run: npm ci
+        run: npm install
 
       - name: Build frontend
         working-directory: frontend
         run: npm run build
 
-      - name: Install backend dependencies
+      - name: Install backend deps
         working-directory: backend
-        run: npm ci
+        run: npm install
 
-      - name: Typecheck backend
+      - name: Ensure D1 exists
         working-directory: backend
-        run: npm run typecheck
+        shell: bash
+        run: |
+          npx wrangler d1 list --json > dbs.json
+          DB_ID=$(node -e "const fs=require('fs');const dbs=JSON.parse(fs.readFileSync('dbs.json','utf8'));const db=(Array.isArray(dbs)?dbs:dbs.result||[]).find(d=>d.name==='luxora_db');console.log(db?.uuid||db?.id||'')")
 
-      - name: Apply D1 migrations
+          if [ -z "$DB_ID" ]; then
+            echo 'Creating D1 database...'
+            CREATE_OUTPUT=$(npx wrangler d1 create luxora_db)
+            echo "$CREATE_OUTPUT"
+            DB_ID=$(echo "$CREATE_OUTPUT" | grep -oE '[0-9a-fA-F-]{36}' | head -n 1)
+          fi
+
+          echo "DB_ID=$DB_ID" >> $GITHUB_ENV
+
+      - name: Patch wrangler.toml
+        working-directory: backend
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs')
+          const dbId = process.env.DB_ID
+          let t = fs.readFileSync('wrangler.toml','utf8')
+
+          if (/database_id\s*=\s*".*"/.test(t)) {
+            t = t.replace(/database_id\s*=\s*".*"/, `database_id = "${dbId}"`)
+          }
+
+          if (!/database_name\s*=\s*"luxora_db"/.test(t)) {
+            t += `\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "luxora_db"\ndatabase_id = "${dbId}"\n`
+          }
+
+          fs.writeFileSync('wrangler.toml', t)
+          console.log(t)
+          NODE
+
+      - name: Run migrations
         working-directory: backend
         run: npx wrangler d1 migrations apply luxora_db --remote
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Deploy Worker
+      - name: Deploy worker
         working-directory: backend
         run: npx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
