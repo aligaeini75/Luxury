@@ -20,7 +20,7 @@ defineEmits(['unlock'])
     <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
 
     <div v-if="!unlocked" class="absolute inset-0 flex items-center justify-center">
-      <button class="lux-btn" @click="emit('unlock', item)">
+      <button class="lux-btn" @click="$emit('unlock', item)">
         <Lock class="mr-2 h-5 w-5" /> باز کردن گالری
       </button>
     </div>
