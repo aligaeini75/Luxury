@@ -45,17 +45,26 @@ jobs:
 
       - name: Install frontend deps
         working-directory: frontend
-        run: npm ci --include=dev
+        shell: bash
+        run: |
+          npm ci --include=dev
+          npm install --save-dev vue-tsc@2.1.10 typescript@5.6.3 vite@5.4.11
+          test -x ./node_modules/.bin/vue-tsc
+          test -x ./node_modules/.bin/vite
 
       - name: Verify frontend tools
         working-directory: frontend
+        shell: bash
         run: |
-          npm exec vue-tsc -- --version
-          npm exec vite -- --version
+          ./node_modules/.bin/vue-tsc --version
+          ./node_modules/.bin/vite --version
 
       - name: Build frontend
         working-directory: frontend
-        run: npm run build
+        shell: bash
+        run: |
+          ./node_modules/.bin/vue-tsc --noEmit
+          ./node_modules/.bin/vite build
 
       - name: Install backend deps
         working-directory: backend
