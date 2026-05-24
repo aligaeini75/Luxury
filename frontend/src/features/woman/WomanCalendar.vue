@@ -45,12 +45,12 @@ const days = computed(() => {
   const firstWeekday = (first.getDay() + 1) % 7
   const cells: Array<any> = []
 
-  for (let i = 0; i < firstWeekday; i++) cells.push({ empty: true, id: `empty-{i}` })
+  for (let i = 0; i < firstWeekday; i++) cells.push({ empty: true, id: `empty-${i}` })
 
   for (let day = 1; day <= last.getDate(); day++) {
     const d = new Date(viewYear.value, viewMonth.value, day)
     const iso = toLocalISO(d)
-    const items = woman.availability.filter((x: any) => x.date === iso)
+    const items = woman.availability.filter((x: any) => normalizeDate(x.date) === iso)
     cells.push({
       id: iso,
       date: iso,
@@ -65,7 +65,7 @@ const days = computed(() => {
 })
 
 const sortedSlots = computed(() =>
-  [...woman.availability].sort((a: any, b: any) => String(a.date + a.start_time).localeCompare(String(b.date + b.start_time)))
+  [...woman.availability].sort((a: any, b: any) => String(`${normalizeDate(a.date)} ${a.start_time}`).localeCompare(String(`${normalizeDate(b.date)} ${b.start_time}`)))
 )
 
 const finalPrice = computed(() => {
@@ -78,7 +78,15 @@ function toLocalISO(d: Date) {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
-  return `{y}-{m}-{day}`
+  return `${y}-${m}-${day}`
+}
+
+function normalizeDate(value: any) {
+  const raw = String(value || '')
+  if (!raw) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+  const d = new Date(raw)
+  return Number.isNaN(d.getTime()) ? raw : toLocalISO(d)
 }
 
 function parseJson(value: any, fallback: any) {
@@ -134,7 +142,7 @@ function editSlot(slot: any) {
   editingId.value = slot.id
   Object.assign(form, {
     booking_type: slot.booking_type || 'date',
-    date: slot.date || '',
+    date: normalizeDate(slot.date),
     start_time: slot.start_time || '20:00',
     end_time: slot.end_time || '21:00',
     duration_minutes: Number(slot.duration_minutes || 60),
@@ -145,7 +153,7 @@ function editSlot(slot: any) {
     location_photos: parseJson(slot.location_photos_json, []),
     services: parseJson(slot.services_json, []),
   })
-  selectedLabel.value = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(slot.date))
+  selectedLabel.value = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${normalizeDate(slot.date)}T00:00:00`))
   modalOpen.value = true
 }
 
@@ -177,8 +185,11 @@ function removePhoto(index: number) {
 }
 
 async function saveSlot() {
+  if (!form.date) return window.alert('لطفاً یک روز معتبر انتخاب کن.')
+  if (!form.start_time || !form.end_time) return window.alert('ساعت شروع و پایان را وارد کن.')
   const payload = {
     ...form,
+    date: normalizeDate(form.date),
     price_override: Number(form.price_override || 0),
     total_price: Number(finalPrice.value || 0),
     duration_minutes: Number(form.duration_minutes || 60),
@@ -275,7 +286,7 @@ onMounted(() => woman.studio())
               <div class="flex items-start justify-between gap-3">
                 <div>
                   <p class="text-xl font-black text-white">{{ labels[slot.booking_type] || slot.booking_type }}</p>
-                  <p class="mt-1 text-sm text-muted">{{ slot.date }} · {{ slot.start_time }} تا {{ slot.end_time }}</p>
+                  <p class="mt-1 text-sm text-muted">{{ normalizeDate(slot.date) }} · {{ slot.start_time }} تا {{ slot.end_time }}</p>
                   <p v-if="slot.booking_type === 'date'" class="mt-1 text-sm text-muted">{{ slot.location_title || 'لوکیشن هنوز وارد نشده' }}</p>
                 </div>
                 <span class="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs font-black text-champagne">
@@ -396,7 +407,7 @@ onMounted(() => woman.studio())
                 </button>
 
                 <div class="mt-4 space-y-2">
-                  <div v-for="(s, i) in form.services" :key="`{s.title}-{i}`" class="flex items-center justify-between rounded-2xl bg-black/35 p-3">
+                  <div v-for="(s, i) in form.services" :key="`${s.title}-${i}`" class="flex items-center justify-between rounded-2xl bg-black/35 p-3">
                     <span class="font-bold text-white">{{ s.title }}</span>
                     <div class="flex items-center gap-3">
                       <span class="text-champagne">{{ Number(s.price || 0) }} تومان</span>

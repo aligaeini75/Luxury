@@ -15,9 +15,9 @@ const locations = ref<any[]>([])
 const availability = ref<any[]>([])
 const showBooking = ref(false)
 const activeTab = ref<'book' | 'gallery'>('book')
-function loginRequired() { window.alert('ورود required to send request') }
+function loginRequired() { window.alert('برای ثبت درخواست باید وارد حساب کاربری شوید.') }
 onMounted(async () => {
-  const { data } = await api.get(`/public/women/{route.params.id}`)
+  const { data } = await api.get(`/public/women/${route.params.id}`)
   profile.value = data.profile
   gallery.value = data.gallery || []
   services.value = data.services || []
@@ -39,8 +39,8 @@ onMounted(async () => {
           <div class="p-8 md:p-12">
             <div class="badge">پروفایل خصوصی تاییدشده</div>
             <h1 class="mt-6 text-6xl font-black leading-[.9] md:text-8xl">{{ profile.display_name }}</h1>
-            <p class="muted mt-6 max-w-2xl text-lg leading-8">{{ profile.bio || 'لوکس خصوصی profile with curated access.' }}</p>
-            <div class="mt-8 flex flex-wrap gap-3"><span class="status-gold">شروع از {{ profile.public_price }}</span><span class="status-green">تاییدشده</span><span class="status-gold">{{ profile.city || 'Private city' }}</span></div>
+            <p class="muted mt-6 max-w-2xl text-lg leading-8">{{ profile.bio || 'پروفایل خصوصی با دسترسی مدیریت‌شده.' }}</p>
+            <div class="mt-8 flex flex-wrap gap-3"><span class="status-gold">شروع از {{ profile.public_price }} تومان</span><span class="status-green">تاییدشده</span><span class="status-gold">{{ profile.city || 'شهر خصوصی' }}</span></div>
             <ReputationMiniCard class="mt-6 max-w-md" :completed="profile.booking_count || 0" />
             <div class="mt-8 flex flex-wrap gap-3"><button class="lux-btn" @click="showBooking = true; activeTab='book'">مشاهده تایم‌های آزاد</button><button class="lux-btn-dark" @click="activeTab='gallery'">گالری ماهانه</button></div>
           </div>
@@ -53,8 +53,8 @@ onMounted(async () => {
         <div class="lux-panel p-8">
           <div class="badge">تجربه‌های قابل استفاده</div>
           <div class="mt-6 grid gap-4 md:grid-cols-3">
-            <button v-for="type in ['date','chat','video_call']" :key="type" class="rounded-[2rem] border border-white/10 bg-white/[.055] p-5 text-left transition hover:border-gold/40" @click="showBooking=true; activeTab='book'">
-              <b>{{ type === 'دیت' ? 'دیت' : type === 'chat' ? 'چت خصوصی' : 'ویدیوکال' }}</b>
+            <button v-for="type in ['date','chat','video_call']" :key="type" class="rounded-[2rem] border border-white/10 bg-white/[.055] p-5 text-right transition hover:border-gold/40" @click="showBooking=true; activeTab='book'">
+              <b>{{ type === 'date' ? 'دیت حضوری' : type === 'chat' ? 'چت خصوصی' : 'ویدیوکال' }}</b>
               <p class="muted mt-1">{{ availability.filter(a => (a.booking_type || 'date') === type && !a.is_booked).length }} تایم آزاد</p>
             </button>
           </div>
