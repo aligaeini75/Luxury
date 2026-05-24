@@ -15,6 +15,8 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       D1_DB_NAME: luxora_db
+      NPM_CONFIG_PRODUCTION: "false"
+      NODE_ENV: development
 
     steps:
       - name: Checkout
@@ -36,10 +38,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
 
       - name: Install frontend deps
         working-directory: frontend
-        run: npm install
+        run: npm ci --include=dev
+
+      - name: Verify frontend tools
+        working-directory: frontend
+        run: |
+          npm exec vue-tsc -- --version
+          npm exec vite -- --version
 
       - name: Build frontend
         working-directory: frontend
@@ -47,7 +59,7 @@ jobs:
 
       - name: Install backend deps
         working-directory: backend
-        run: npm install
+        run: npm ci --include=dev
 
       - name: Ensure D1 exists
         working-directory: backend
