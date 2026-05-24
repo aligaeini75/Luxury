@@ -1,0 +1,2 @@
+import 'vue'
+declare module 'vue' { interface ComponentCustomProperties { $t: (path: string, fallback?: string) => string; $status: (status?: string | null) => string; $bookingType: (type?: string | null) => string; $role: (role?: string | null) => string; $money: (value?: number | string | null, currency?: string) => string; $faDate: (value?: string | number | Date | null) => string } }

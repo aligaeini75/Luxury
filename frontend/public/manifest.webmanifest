@@ -1,0 +1,11 @@
+{
+  "name": "Luxora",
+  "short_name": "Luxora",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050301",
+  "theme_color": "#d6ad52",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": []
+}

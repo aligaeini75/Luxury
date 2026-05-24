@@ -1,0 +1,28 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="900" fill="#050301"/>
+  <defs>
+    <radialGradient id="g1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(310 155) rotate(40) scale(650 520)">
+      <stop stop-color="#D6AD52" stop-opacity=".36"/>
+      <stop offset=".55" stop-color="#D6AD52" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#D6AD52" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(935 160) rotate(130) scale(460 420)">
+      <stop stop-color="#FFF0BD" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#FFF0BD" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="210" y1="190" x2="990" y2="730">
+      <stop stop-color="#FFF0BD" stop-opacity=".15"/>
+      <stop offset="1" stop-color="#D6AD52" stop-opacity=".055"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#g1)"/>
+  <rect width="1200" height="900" fill="url(#g2)"/>
+  <rect x="195" y="165" width="810" height="570" rx="58" fill="url(#panel)" stroke="#D6AD52" stroke-opacity=".34" stroke-width="2"/>
+  <rect x="265" y="235" width="670" height="430" rx="42" fill="#000" fill-opacity=".38" stroke="#FFF0BD" stroke-opacity=".13"/>
+  <circle cx="600" cy="450" r="105" fill="#D6AD52" fill-opacity=".18" stroke="#FFF0BD" stroke-opacity=".28" stroke-width="2"/>
+  <path d="M570 392L675 450L570 508V392Z" fill="#FFF0BD" fill-opacity=".9"/>
+  <rect x="312" y="285" width="90" height="60" rx="16" fill="#FFF0BD" fill-opacity=".14"/>
+  <rect x="798" y="555" width="90" height="60" rx="16" fill="#D6AD52" fill-opacity=".16"/>
+  <path d="M450 705H750" stroke="#D6AD52" stroke-opacity=".45" stroke-width="10" stroke-linecap="round"/>
+  <text x="600" y="785" text-anchor="middle" fill="#FFF0BD" fill-opacity=".72" font-size="34" font-family="Arial, sans-serif" font-weight="700">Upload Video</text>
+</svg>

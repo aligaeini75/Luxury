@@ -1,0 +1,26 @@
+name = "luxora-enterprise-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+
+[assets]
+directory = "../frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "luxora_ultimate_db"
+database_id = "PUT_DATABASE_ID_HERE"
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "luxora-media"
+
+[durable_objects]
+bindings = [
+  { name = "CHAT_DO", class_name = "ChatDurableObject" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatDurableObject"]
