@@ -1,0 +1,75 @@
+/* Readable UI scale override: loaded after the legacy compact pass. */
+html {
+  font-size: 16px !important;
+}
+
+body {
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.lux-panel,
+.lux-card {
+  border-radius: 1.8rem !important;
+}
+
+.lux-input {
+  min-height: 52px !important;
+  padding: 0.95rem 1.15rem !important;
+  border-radius: 1.15rem !important;
+  font-size: 1rem !important;
+}
+
+.lux-btn,
+.lux-btn-dark {
+  min-height: 50px !important;
+  padding: 0.9rem 1.35rem !important;
+  font-size: 0.98rem !important;
+}
+
+.badge {
+  padding: 0.48rem 0.9rem !important;
+  font-size: 0.78rem !important;
+}
+
+.muted {
+  font-size: 1rem;
+  line-height: 1.95;
+}
+
+h1 {
+  font-size: clamp(2.45rem, 5vw, 5.25rem) !important;
+  line-height: 1.05 !important;
+}
+
+h2 {
+  font-size: clamp(1.85rem, 3.3vw, 3.6rem) !important;
+  line-height: 1.12 !important;
+}
+
+h3 {
+  font-size: clamp(1.35rem, 2.1vw, 2.25rem) !important;
+  line-height: 1.2 !important;
+}
+
+.text-7xl { font-size: clamp(3.5rem, 6vw, 5.5rem) !important; }
+.text-6xl { font-size: clamp(3rem, 5vw, 4.5rem) !important; }
+.text-5xl { font-size: clamp(2.35rem, 4vw, 3.6rem) !important; }
+.text-4xl { font-size: 2.35rem !important; }
+.text-3xl { font-size: 1.85rem !important; }
+.text-2xl { font-size: 1.45rem !important; }
+
+@media (max-width: 768px) {
+  html { font-size: 15px !important; }
+  h1 { font-size: clamp(2.15rem, 10vw, 3.65rem) !important; }
+  h2 { font-size: clamp(1.65rem, 7.5vw, 2.65rem) !important; }
+  h3 { font-size: clamp(1.35rem, 5.8vw, 2rem) !important; }
+  .text-7xl,
+  .text-6xl,
+  .text-5xl,
+  .text-4xl { font-size: clamp(2rem, 8vw, 3rem) !important; }
+  .lux-panel,
+  .lux-card { border-radius: 1.45rem !important; }
+  .lux-btn,
+  .lux-btn-dark { min-height: 50px !important; font-size: 0.95rem !important; }
+}
