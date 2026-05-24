@@ -68,11 +68,11 @@ jobs:
         shell: bash
         run: |
           pnpm exec wrangler d1 list --json > dbs.json
-          DB_ID=$(node -e "const fs=require('fs');const dbs=JSON.parse(fs.readFileSync('dbs.json','utf8'));const db=(Array.isArray(dbs)?dbs:dbs.result||[]).find(d=>d.name==='luxora_db');console.log(db?.uuid||db?.id||'')")
+          DB_ID=$(node -e "const fs=require('fs');const dbs=JSON.parse(fs.readFileSync('dbs.json','utf8'));const name=process.env.D1_DB_NAME;const db=(Array.isArray(dbs)?dbs:dbs.result||[]).find(d=>d.name===name);console.log(db?.uuid||db?.id||'')")
 
           if [ -z "$DB_ID" ]; then
-            echo 'Creating D1 database...'
-            CREATE_OUTPUT=$(pnpm exec wrangler d1 create luxora_db)
+            echo "Creating D1 database $D1_DB_NAME..."
+            CREATE_OUTPUT=$(pnpm exec wrangler d1 create "$D1_DB_NAME")
             echo "$CREATE_OUTPUT"
             DB_ID=$(echo "$CREATE_OUTPUT" | grep -oE '[0-9a-fA-F-]{36}' | head -n 1)
           fi
@@ -86,15 +86,11 @@ jobs:
           node - <<'NODE'
           const fs = require('fs')
           const dbId = process.env.DB_ID
-          let t = fs.readFileSync('wrangler.toml','utf8')
+          const dbName = process.env.D1_DB_NAME || 'luxora_db'
+          let t = fs.readFileSync('wrangler.toml', 'utf8')
 
-          if (/database_id\s*=\s*".*"/.test(t)) {
-            t = t.replace(/database_id\s*=\s*".*"/, `database_id = "${dbId}"`)
-          }
-
-          if (!/database_name\s*=\s*"luxora_db"/.test(t)) {
-            t += `\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "luxora_db"\ndatabase_id = "${dbId}"\n`
-          }
+          t = t.replace(/\n\[\[d1_databases\]\][\s\S]*?(?=\n\[\[|\n\[|$)/g, '')
+          t = `${t.trim()}\n\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "${dbName}"\ndatabase_id = "${dbId}"\n`
 
           fs.writeFileSync('wrangler.toml', t)
           console.log(t)
@@ -102,7 +98,7 @@ jobs:
 
       - name: Run migrations
         working-directory: backend
-        run: pnpm exec wrangler d1 migrations apply luxora_db --remote
+        run: pnpm exec wrangler d1 migrations apply "$D1_DB_NAME" --remote
 
       - name: Deploy worker
         working-directory: backend
