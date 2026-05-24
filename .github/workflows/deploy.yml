@@ -32,51 +32,48 @@ jobs:
             unzip -o "$ZIP"
           fi
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            backend/package-lock.json
+          cache: pnpm
 
-      - name: Install frontend deps
-        working-directory: frontend
-        shell: bash
-        run: |
-          npm install --include=dev --no-audit --no-fund
-          test -x ./node_modules/.bin/vue-tsc
-          test -x ./node_modules/.bin/vite
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
       - name: Verify frontend tools
         working-directory: frontend
         shell: bash
         run: |
-          ./node_modules/.bin/vue-tsc --version
-          ./node_modules/.bin/vite --version
+          pnpm exec vue-tsc --version
+          pnpm exec vite --version
 
       - name: Build frontend
         working-directory: frontend
+        run: pnpm run build
+
+      - name: Verify backend tools
+        working-directory: backend
         shell: bash
         run: |
-          ./node_modules/.bin/vue-tsc --noEmit
-          ./node_modules/.bin/vite build
-
-      - name: Install backend deps
-        working-directory: backend
-        run: npm install --include=dev --no-audit --no-fund
+          pnpm exec wrangler --version
+          pnpm exec tsc --version
 
       - name: Ensure D1 exists
         working-directory: backend
         shell: bash
         run: |
-          npx wrangler d1 list --json > dbs.json
+          pnpm exec wrangler d1 list --json > dbs.json
           DB_ID=$(node -e "const fs=require('fs');const dbs=JSON.parse(fs.readFileSync('dbs.json','utf8'));const db=(Array.isArray(dbs)?dbs:dbs.result||[]).find(d=>d.name==='luxora_db');console.log(db?.uuid||db?.id||'')")
 
           if [ -z "$DB_ID" ]; then
             echo 'Creating D1 database...'
-            CREATE_OUTPUT=$(npx wrangler d1 create luxora_db)
+            CREATE_OUTPUT=$(pnpm exec wrangler d1 create luxora_db)
             echo "$CREATE_OUTPUT"
             DB_ID=$(echo "$CREATE_OUTPUT" | grep -oE '[0-9a-fA-F-]{36}' | head -n 1)
           fi
@@ -106,8 +103,8 @@ jobs:
 
       - name: Run migrations
         working-directory: backend
-        run: npx wrangler d1 migrations apply luxora_db --remote
+        run: pnpm exec wrangler d1 migrations apply luxora_db --remote
 
       - name: Deploy worker
         working-directory: backend
-        run: npx wrangler deploy
+        run: pnpm exec wrangler deploy
