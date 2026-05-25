@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import NotificationBell from '../lux/NotificationBell.vue'
-import { LogOut, User, Wallet, Search, Image, CalendarDays, MapPin, Gem, Inbox, ClipboardList, Bell } from 'lucide-vue-next'
+import LuxoraLogo from '../brand/LuxoraLogo.vue'
+import { LogOut, User, Wallet, Search, Image, CalendarDays, Inbox, ClipboardList, Bell } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 import { api } from '../../lib/api'
 import { useAuthStore } from '../../stores/auth'
@@ -11,7 +12,7 @@ const auth = useAuthStore()
 const alerts = ref<any[]>([])
 const showAlerts = ref(false)
 async function loadNotifications() { try { const { data } = await api.get('/auth/alerts'); alerts.value = data.alerts || [] } catch {} }
-async function openAlert(a: any) { await api.post(`/auth/alerts/{a.id}/read`).catch(() => {}); if (a.target_url) window.location.assign(a.target_url); await loadNotifications() }
+async function openAlert(a: any) { await api.post(`/auth/alerts/${a.id}/read`).catch(() => {}); if (a.target_url) window.location.assign(a.target_url); await loadNotifications() }
 onMounted(async () => { await auth.me().catch(() => {}); await loadNotifications() })
 
 const manLinks = [
@@ -39,7 +40,7 @@ function go(to: string) { window.location.assign(to) }
   <div class="fixed left-5 top-5 z-[70] hidden lg:block"><NotificationBell /></div>
   <div class="min-h-screen bg-[#030201]">
     <aside class="fixed right-0 top-0 bottom-0 z-40 hidden w-80 border-l border-gold/15 bg-black/75 p-6 shadow-[-24px_0_80px_rgba(0,0,0,.35)] backdrop-blur-2xl lg:block">
-      <RouterLink to="/" class="text-3xl font-black tracking-[.22em] text-gold">لوکسورا</RouterLink>
+      <LuxoraLogo />
       <div class="mt-7 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[.055]">
         <div class="hero-art hero-art-sm h-36"><span class="lux-face"></span><span class="lux-shoulder"></span><span class="lux-shine"></span></div>
         <div class="p-5">
