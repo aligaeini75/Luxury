@@ -34,8 +34,12 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
+    const status = error?.response?.status
+    const method = String(error?.config?.method || '').toUpperCase()
+    const url = String(error?.config?.url || '')
     const msg = error?.response?.data?.error || error?.response?.data?.message || error?.message || 'خطایی رخ داد.'
-    useToastStore().error('عملیات ناموفق بود', msg)
+    const details = status ? `${msg} · ${status} ${method} ${url}` : msg
+    useToastStore().error('عملیات ناموفق بود', details)
     return Promise.reject(error)
   }
 )
