@@ -16,19 +16,19 @@ async function openAlert(a: any) { await api.post(`/auth/alerts/${a.id}/read`).c
 onMounted(async () => { await auth.me().catch(() => {}); await loadNotifications() })
 
 const manLinks = [
-  { to: '/#/man', label: 'نمای کلی آقایان', icon: User },
-  { to: '/#/man/discover', label: 'کشف و رزرو', icon: Search },
-  { to: '/#/man/requests', label: 'درخواست‌های من', icon: ClipboardList },
-  { to: '/#/man/subscriptions', label: 'گالری‌های ماهانه', icon: Bell },
-  { to: '/#/man/profile', label: 'استودیو پروفایل', icon: User },
+  { to: '/#/man', label: 'نمای کلی', icon: User },
+  { to: '/#/man/discover', label: 'جستجو و رزرو', icon: Search },
+  { to: '/#/man/requests', label: 'رزروهای من', icon: ClipboardList },
+  { to: '/#/man/subscriptions', label: 'اشتراک‌های گالری', icon: Bell },
+  { to: '/#/man/profile', label: 'پروفایل من', icon: User },
   { to: '/#/man/gallery', label: 'گالری من', icon: Image },
-  { to: '/#/wallet', label: 'کیف پول و واریز', icon: Wallet },
+  { to: '/#/wallet', label: 'کیف پول', icon: Wallet },
 ]
 
 const womanLinks = [
-  { to: '/#/woman/studio', label: 'استودیو خانم', icon: User },
-  { to: '/#/woman/requests', label: 'درخواست‌ها و جلسات', icon: Inbox },
-  { to: '/#/woman/calendar', label: 'تایم دیت / چت / ویدیو', icon: CalendarDays },
+  { to: '/#/woman/studio', label: 'پروفایل و تنظیمات', icon: User },
+  { to: '/#/woman/requests', label: 'رزروها و جلسات', icon: Inbox },
+  { to: '/#/woman/calendar', label: 'تقویم و تایم‌ها', icon: CalendarDays },
   { to: '/#/woman/gallery', label: 'گالری ماهانه', icon: Image },
   { to: '/#/woman/wallet', label: 'کیف پول و برداشت', icon: Wallet },
 ]
@@ -44,8 +44,8 @@ function go(to: string) { window.location.assign(to) }
       <div class="mt-7 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[.055]">
         <div class="hero-art hero-art-sm h-36"><span class="lux-face"></span><span class="lux-shoulder"></span><span class="lux-shine"></span></div>
         <div class="p-5">
-          <div class="badge">{{ auth.user?.role === 'woman' ? 'پنل خانم' : 'لانژ خصوصی آقا' }}</div>
-          <p class="mt-3 text-sm text-muted">{{ auth.user?.email || 'پنل خصوصی بر اساس نقش' }}</p>
+          <div class="badge">{{ auth.user?.role === 'woman' ? 'پنل خانم' : 'پنل آقا' }}</div>
+          <p class="mt-3 text-sm text-muted">{{ auth.user?.email || 'حساب خصوصی لوکسورا' }}</p>
         </div>
       </div>
       <nav class="mt-6 max-h-[calc(100vh-310px)] space-y-2 overflow-y-auto pl-1">
