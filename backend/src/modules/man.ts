@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { id, now } from '../lib/id'
 import { auth } from '../middleware/auth'
+import { sendBookingEmail } from '../lib/email'
 import type { Env } from '../index'
 
 export const manRoutes = new Hono<{ Bindings: Env; Variables: { user: any } }>()
@@ -216,5 +217,15 @@ manRoutes.post('/requests', async c => {
     .bind(id('al'), String(b.woman_id), 'booking_request', 'New booking request', `New ${type.replace('_',' ')} request for ${slot.date} at ${slot.start_time}.`, '/#/woman/requests', 0, t).run()
   await c.env.DB.prepare('INSERT INTO user_alerts(id,user_id,type,title,body,target_url,is_read,created_at) VALUES(?,?,?,?,?,?,?,?)')
     .bind(id('al'), u.id, 'booking_request_sent', 'Request sent', `Your ${type.replace('_',' ')} request was sent and the amount is held until review.`, '/#/man/requests', 0, t).run()
+
+  const womanUser: any = await c.env.DB.prepare('SELECT email FROM users WHERE id=?').bind(String(b.woman_id)).first()
+  await sendBookingEmail(c.env, womanUser?.email || '', 'created', {
+    type,
+    date: slot.date,
+    time: slot.start_time,
+    amount,
+    note: `درخواست از طرف ${mp?.display_name || u.email}`
+  }).catch((err: any) => console.error('BOOKING_CREATED_EMAIL_FAILED', err?.message || err))
+
   return c.json({ success: true, request_id: reqId, held_amount: amount })
 })
