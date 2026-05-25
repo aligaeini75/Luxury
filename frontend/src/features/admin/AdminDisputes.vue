@@ -14,13 +14,13 @@ async function load() {
 }
 
 async function decideEarly(id: string, action: 'approve' | 'reject') {
-  await api.post(`/admin/early-open/{id}/{action}`, { note: note.value })
+  await api.post(`/admin/early-open/${id}/${action}`, { note: note.value })
   note.value = ''
   await load()
 }
 
 async function resolveDispute(id: string, action: 'refund' | 'release' | 'reject') {
-  await api.post(`/admin/disputes/{id}/resolve`, { action, note: note.value })
+  await api.post(`/admin/disputes/${id}/resolve`, { action, note: note.value })
   note.value = ''
   await load()
 }
