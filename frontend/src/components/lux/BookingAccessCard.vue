@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Clock3, MessageCircle, Video } from 'lucide-vue-next'
+import { MessageCircle, Video } from 'lucide-vue-next'
 import { api } from '../../lib/api'
 
 const props = defineProps<{
@@ -24,8 +24,10 @@ async function load() {
   if (!props.bookingId) return
   loading.value = true
   try {
-    const { data } = await api.get(`/bookings/{props.bookingId}/access`)
+    const { data } = await api.get(`/bookings/${props.bookingId}/access`)
     access.value = data
+  } catch {
+    access.value = null
   } finally {
     loading.value = false
   }
@@ -33,7 +35,7 @@ async function load() {
 
 const startMs = computed(() => {
   if (!props.date || !props.time) return 0
-  return new Date(`{props.date}T{props.time}:00`).getTime()
+  return new Date(`${props.date}T${props.time}:00`).getTime()
 })
 const endMs = computed(() => startMs.value ? startMs.value + Number(props.durationMinutes || 60) * 60_000 : 0)
 const openMs = computed(() => startMs.value ? startMs.value - 5 * 60_000 : 0)
@@ -54,11 +56,11 @@ const remainingLabel = computed(() => {
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
   const s = total % 60
-  return [h,m,s].map(v => String(v).padStart(2,'0')).join(':')
+  return [h, m, s].map(v => String(v).padStart(2, '0')).join(':')
 })
 
 function openChat() { if (hasAccess.value) router.push('/chat') }
-function openVideo() { if (hasAccess.value) router.push(`/video-call/{props.bookingId}`) }
+function openVideo() { if (hasAccess.value) router.push(`/video-call/${props.bookingId}`) }
 
 onMounted(() => {
   load()
