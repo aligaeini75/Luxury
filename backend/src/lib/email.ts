@@ -19,6 +19,12 @@ function appUrl(env: EmailEnv) {
   return String(env.APP_URL || 'https://luxora.app').replace(/\/$/, '')
 }
 
+function sender(env: EmailEnv) {
+  return env.EMAIL_FROM_VERIFIED === '1' && env.EMAIL_FROM
+    ? String(env.EMAIL_FROM)
+    : 'Luxora <onboarding@resend.dev>'
+}
+
 function html(env: EmailEnv, o: EmailOptions) {
   const code = o.code ? `<div style="margin:30px 0;padding:24px;border:1px solid rgba(214,173,82,.42);border-radius:28px;background:linear-gradient(135deg,rgba(214,173,82,.15),rgba(255,255,255,.035));text-align:center"><div style="color:#b9aa80;font-size:13px;font-weight:800">کد تایید اختصاصی</div><div style="direction:ltr;letter-spacing:.34em;margin-top:10px;color:#fff0bd;font-size:44px;font-weight:900">${esc(o.code)}</div><div style="margin-top:10px;color:#8f805f;font-size:12px">اعتبار: ۱۵ دقیقه</div></div>` : ''
   const btn = o.url ? `<a href="${esc(appUrl(env) + o.url)}" style="display:inline-block;margin-top:26px;padding:15px 24px;border-radius:999px;background:linear-gradient(90deg,#d6ad52,#fff0bd,#d6ad52);color:#080502;text-decoration:none;font-weight:900;font-size:15px;box-shadow:0 14px 38px rgba(214,173,82,.22)">${esc(o.actionLabel || 'مشاهده در Luxora')}</a>` : ''
@@ -34,7 +40,7 @@ export async function sendLuxEmail(env: EmailEnv, o: EmailOptions) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: env.EMAIL_FROM || 'Luxora <onboarding@resend.dev>', to: [o.to], subject: o.subject, html: html(env, o) })
+    body: JSON.stringify({ from: sender(env), to: [o.to], subject: o.subject, html: html(env, o) })
   })
   const reason = await res.text().catch(() => '')
   if (!res.ok) console.error('EMAIL_SEND_FAILED', res.status, reason)
