@@ -3,9 +3,10 @@ import { sign } from 'hono/jwt'
 import { id, now } from '../lib/id'
 import { hashPassword, verifyPassword } from '../lib/password'
 import { sendCriticalEmail, sendVerificationEmail } from '../lib/email'
+import { auth } from '../middleware/auth'
 import type { Env } from '../index'
 
-export const authEmailRoutes = new Hono<{ Bindings: Env }>()
+export const authEmailRoutes = new Hono<{ Bindings: Env; Variables: { user: any } }>()
 
 const norm = (v: any) => String(v || '').trim().toLowerCase()
 const code = () => String(Math.floor(100000 + Math.random() * 900000))
@@ -109,7 +110,7 @@ async function handleLogin(c: any) {
   return c.json({ token: await token(c, u), user: { id: u.id, email: u.email, full_name: u.full_name, role: u.role, verified: u.verified, email_verified: u.email_verified } })
 }
 
-authEmailRoutes.get('/email-health', async c => c.json({ ok: true, routes: ['register', 'login', 'verify-email', 'resend-email-code'] }))
+authEmailRoutes.get('/email-health', async c => c.json({ ok: true, routes: ['register', 'login', 'verify-email', 'resend-email-code', 'me', 'alerts'] }))
 authEmailRoutes.post('/register', handleRegister)
 authEmailRoutes.post('/signup', handleRegister)
 authEmailRoutes.post('/login', handleLogin)
@@ -119,3 +120,22 @@ authEmailRoutes.post('/verify', handleVerify)
 authEmailRoutes.post('/resend-email-code', handleResend)
 authEmailRoutes.post('/email/resend-code', handleResend)
 authEmailRoutes.post('/resend-code', handleResend)
+
+authEmailRoutes.get('/me', auth, async c => {
+  await ensureEmailSchema(c)
+  const u = c.get('user')
+  const user = await c.env.DB.prepare('SELECT id,email,full_name,role,verified,status,email_verified,email_verified_at FROM users WHERE id=?').bind(u.id).first()
+  return c.json({ user })
+})
+
+authEmailRoutes.get('/alerts', auth, async c => {
+  const u = c.get('user')
+  const alerts = (await c.env.DB.prepare('SELECT * FROM user_alerts WHERE user_id=? ORDER BY created_at DESC LIMIT 20').bind(u.id).all()).results
+  return c.json({ alerts, unread: alerts.filter((a: any) => !a.is_read).length })
+})
+
+authEmailRoutes.post('/alerts/:id/read', auth, async c => {
+  const u = c.get('user')
+  await c.env.DB.prepare('UPDATE user_alerts SET is_read=1 WHERE id=? AND user_id=?').bind(c.req.param('id'), u.id).run()
+  return c.json({ success: true })
+})
