@@ -50,7 +50,7 @@ async function sendCode(c: any, u: any) {
   return { sent, dev_code: c.env.EMAIL_DEBUG_CODE === '1' ? v : undefined }
 }
 
-authEmailRoutes.post('/register', async c => {
+async function handleRegister(c: any) {
   await ensureEmailSchema(c)
   const b: any = await c.req.json()
   const email = norm(b.email)
@@ -70,9 +70,9 @@ authEmailRoutes.post('/register', async c => {
   else await c.env.DB.prepare('INSERT INTO man_profiles(id,user_id,display_name,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id('mp'), uid, String(b.full_name || email.split('@')[0]), t, t).run()
   const mail = await sendCode(c, { id: uid, email })
   return c.json({ verification_required: true, email, email_sent: !!mail.sent?.ok, dev_code: mail.dev_code })
-})
+}
 
-authEmailRoutes.post('/verify-email', async c => {
+async function handleVerify(c: any) {
   await ensureEmailSchema(c)
   const b: any = await c.req.json(); const email = norm(b.email); const v = String(b.code || '').trim()
   const u: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(email).first()
@@ -86,18 +86,18 @@ authEmailRoutes.post('/verify-email', async c => {
   const fresh: any = await c.env.DB.prepare('SELECT * FROM users WHERE id=?').bind(u.id).first()
   await sendCriticalEmail(c.env, fresh.email, 'عضویت Luxora فعال شد', 'حساب شما فعال شد', 'ایمیل شما تایید شد و حساب فعال است.', fresh.role === 'woman' ? '/#/woman/studio' : '/#/man').catch(() => {})
   return c.json({ token: await token(c, fresh), user: { id: fresh.id, email: fresh.email, full_name: fresh.full_name, role: fresh.role, verified: fresh.verified, email_verified: 1 } })
-})
+}
 
-authEmailRoutes.post('/resend-email-code', async c => {
+async function handleResend(c: any) {
   await ensureEmailSchema(c)
   const b: any = await c.req.json(); const u: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(norm(b.email)).first()
   if (!u) return c.json({ error: 'حساب پیدا نشد.' }, 404)
   if (u.email_verified) return c.json({ success: true, already_verified: true })
   const mail = await sendCode(c, u)
   return c.json({ success: true, email_sent: !!mail.sent?.ok, dev_code: mail.dev_code })
-})
+}
 
-authEmailRoutes.post('/login', async c => {
+async function handleLogin(c: any) {
   await ensureEmailSchema(c)
   const b: any = await c.req.json(); const u: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(norm(b.email)).first()
   if (!u || !(await verifyPassword(String(b.password || ''), u.password_hash))) return c.json({ error: 'Invalid credentials' }, 401)
@@ -107,4 +107,15 @@ authEmailRoutes.post('/login', async c => {
     return c.json({ error: 'EMAIL_VERIFICATION_REQUIRED', verification_required: true, email: u.email, email_sent: !!mail.sent?.ok, dev_code: mail.dev_code }, 403)
   }
   return c.json({ token: await token(c, u), user: { id: u.id, email: u.email, full_name: u.full_name, role: u.role, verified: u.verified, email_verified: u.email_verified } })
-})
+}
+
+authEmailRoutes.get('/email-health', async c => c.json({ ok: true, routes: ['register', 'login', 'verify-email', 'resend-email-code'] }))
+authEmailRoutes.post('/register', handleRegister)
+authEmailRoutes.post('/signup', handleRegister)
+authEmailRoutes.post('/login', handleLogin)
+authEmailRoutes.post('/verify-email', handleVerify)
+authEmailRoutes.post('/email/verify', handleVerify)
+authEmailRoutes.post('/verify', handleVerify)
+authEmailRoutes.post('/resend-email-code', handleResend)
+authEmailRoutes.post('/email/resend-code', handleResend)
+authEmailRoutes.post('/resend-code', handleResend)
