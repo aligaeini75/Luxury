@@ -1,0 +1,32 @@
+header nav a:first-child > span:first-child {
+  background-image: url('/luxora-logo.svg') !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-color: transparent !important;
+  color: transparent !important;
+  border: 1px solid rgba(214,173,82,.22) !important;
+}
+
+section.relative.min-h-screen form.lux-panel::before {
+  content: '';
+  display: block;
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 18px auto;
+  border-radius: 26px;
+  background-image: url('/luxora-logo.svg');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 0 45px rgba(214,173,82,.16);
+}
+
+@media (max-width: 768px) {
+  section.relative.min-h-screen form.lux-panel::before {
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+    margin-bottom: 12px;
+  }
+}
