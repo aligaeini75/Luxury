@@ -110,7 +110,7 @@ async function handleLogin(c: any) {
   return c.json({ token: await token(c, u), user: { id: u.id, email: u.email, full_name: u.full_name, role: u.role, verified: u.verified, email_verified: u.email_verified } })
 }
 
-authEmailRoutes.get('/email-health', async c => c.json({ ok: true, routes: ['register', 'login', 'verify-email', 'resend-email-code', 'me', 'alerts'] }))
+authEmailRoutes.get('/email-health', async c => c.json({ ok: true, routes: ['register', 'login', 'verify-email', 'resend-email-code', 'me', 'alerts', 'kyc'] }))
 authEmailRoutes.post('/register', handleRegister)
 authEmailRoutes.post('/signup', handleRegister)
 authEmailRoutes.post('/login', handleLogin)
@@ -138,4 +138,39 @@ authEmailRoutes.post('/alerts/:id/read', auth, async c => {
   const u = c.get('user')
   await c.env.DB.prepare('UPDATE user_alerts SET is_read=1 WHERE id=? AND user_id=?').bind(c.req.param('id'), u.id).run()
   return c.json({ success: true })
+})
+
+authEmailRoutes.get('/kyc', auth, async c => {
+  const u = c.get('user')
+  const user = await c.env.DB.prepare('SELECT id,email,full_name,role,verified,status,email_verified,email_verified_at FROM users WHERE id=?').bind(u.id).first()
+  const kyc = await c.env.DB.prepare('SELECT * FROM kyc_requests WHERE user_id=? ORDER BY created_at DESC LIMIT 1').bind(u.id).first()
+  const challengeText = `من مالک این حساب لوکسورا هستم و تاریخ امروز ${new Date().toLocaleDateString('fa-IR')} است.`
+  return c.json({ user, kyc, challengeText })
+})
+
+authEmailRoutes.post('/kyc', auth, async c => {
+  const u = c.get('user')
+  const b: any = await c.req.json()
+  const kycId = crypto.randomUUID()
+  const t = new Date().toISOString()
+  await c.env.DB.prepare(`
+    INSERT INTO kyc_requests(id,user_id,document_type,national_card_url,selfie_url,selfie_video_url,mobile,email,status,admin_note,challenge_text,created_at,updated_at)
+    VALUES(?,?,?,?,?,?,?,?, 'pending','',?,?,?)
+  `).bind(
+    kycId,
+    u.id,
+    'national_card',
+    String(b.national_card_url || ''),
+    String(b.selfie_video_url || ''),
+    String(b.selfie_video_url || ''),
+    String(b.mobile || ''),
+    String(b.email || ''),
+    String(b.challenge_text || ''),
+    t,
+    t
+  ).run()
+  const user: any = await c.env.DB.prepare('SELECT email,role FROM users WHERE id=?').bind(u.id).first()
+  await sendCriticalEmail(c.env, user?.email || '', 'درخواست احراز هویت دریافت شد', 'درخواست احراز هویت ثبت شد', 'مدارک شما دریافت شد و برای بررسی ارسال شد.', user?.role === 'woman' ? '/#/woman/studio' : '/#/man/profile').catch(() => {})
+  const kyc = await c.env.DB.prepare('SELECT * FROM kyc_requests WHERE id=?').bind(kycId).first()
+  return c.json({ success: true, message: 'درخواست تایید هویت برای ادمین ارسال شد.', kyc })
 })
