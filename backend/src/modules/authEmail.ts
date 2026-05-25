@@ -43,7 +43,11 @@ async function sendCode(c: any, u: any) {
   await c.env.DB.prepare('UPDATE email_confirmations SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL').bind(t, u.id).run()
   await c.env.DB.prepare('INSERT INTO email_confirmations(id,user_id,email,code_digest,attempts,expires_at,created_at) VALUES(?,?,?,?,?,?,?)')
     .bind(id('emc'), u.id, u.email, await sha(`${u.id}:${u.email}:${v}`), 0, new Date(Date.now() + 900000).toISOString(), t).run()
-  await sendVerificationEmail(c.env, u.email, v)
+  const sent = await sendVerificationEmail(c.env, u.email, v).catch((err: any) => {
+    console.error('VERIFY_EMAIL_SEND_EXCEPTION', err?.message || err)
+    return { ok: false, error: String(err?.message || err) }
+  })
+  return { sent, dev_code: c.env.EMAIL_DEBUG_CODE === '1' ? v : undefined }
 }
 
 authEmailRoutes.post('/register', async c => {
@@ -54,15 +58,18 @@ authEmailRoutes.post('/register', async c => {
   if (!['man', 'woman'].includes(String(b.role))) return c.json({ error: 'Invalid role' }, 400)
   const old: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(email).first()
   if (old?.email_verified) return c.json({ error: 'Email already registered' }, 409)
-  if (old?.id) { await sendCode(c, old); return c.json({ verification_required: true, email }) }
+  if (old?.id) {
+    const mail = await sendCode(c, old)
+    return c.json({ verification_required: true, email, email_sent: !!mail.sent?.ok, dev_code: mail.dev_code })
+  }
   const t = now(); const uid = id('usr')
   await c.env.DB.prepare('INSERT INTO users(id,email,password_hash,full_name,role,status,verified,created_at,updated_at,email_verified) VALUES(?,?,?,?,?,?,?,?,?,?)')
     .bind(uid, email, await hashPassword(String(b.password)), String(b.full_name || ''), String(b.role), 'pending_email', 0, t, t, 0).run()
   await c.env.DB.prepare('INSERT INTO wallets(id,user_id,balance,locked_balance,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(id('wal'), uid, 0, 0, t, t).run()
   if (b.role === 'woman') await c.env.DB.prepare('INSERT INTO woman_profiles(id,user_id,display_name,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id('wp'), uid, String(b.full_name || email.split('@')[0]), t, t).run()
   else await c.env.DB.prepare('INSERT INTO man_profiles(id,user_id,display_name,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id('mp'), uid, String(b.full_name || email.split('@')[0]), t, t).run()
-  await sendCode(c, { id: uid, email })
-  return c.json({ verification_required: true, email })
+  const mail = await sendCode(c, { id: uid, email })
+  return c.json({ verification_required: true, email, email_sent: !!mail.sent?.ok, dev_code: mail.dev_code })
 })
 
 authEmailRoutes.post('/verify-email', async c => {
@@ -77,7 +84,7 @@ authEmailRoutes.post('/verify-email', async c => {
   await c.env.DB.prepare('UPDATE email_confirmations SET consumed_at=? WHERE id=?').bind(t, rec.id).run()
   await c.env.DB.prepare('UPDATE users SET email_verified=1,email_verified_at=?,status="active",updated_at=? WHERE id=?').bind(t, t, u.id).run()
   const fresh: any = await c.env.DB.prepare('SELECT * FROM users WHERE id=?').bind(u.id).first()
-  await sendCriticalEmail(c.env, fresh.email, 'عضویت Luxora فعال شد', 'حساب شما فعال شد', 'ایمیل شما تایید شد و حساب فعال است.', fresh.role === 'woman' ? '/#/woman/studio' : '/#/man')
+  await sendCriticalEmail(c.env, fresh.email, 'عضویت Luxora فعال شد', 'حساب شما فعال شد', 'ایمیل شما تایید شد و حساب فعال است.', fresh.role === 'woman' ? '/#/woman/studio' : '/#/man').catch(() => {})
   return c.json({ token: await token(c, fresh), user: { id: fresh.id, email: fresh.email, full_name: fresh.full_name, role: fresh.role, verified: fresh.verified, email_verified: 1 } })
 })
 
@@ -86,8 +93,8 @@ authEmailRoutes.post('/resend-email-code', async c => {
   const b: any = await c.req.json(); const u: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(norm(b.email)).first()
   if (!u) return c.json({ error: 'حساب پیدا نشد.' }, 404)
   if (u.email_verified) return c.json({ success: true, already_verified: true })
-  await sendCode(c, u)
-  return c.json({ success: true })
+  const mail = await sendCode(c, u)
+  return c.json({ success: true, email_sent: !!mail.sent?.ok, dev_code: mail.dev_code })
 })
 
 authEmailRoutes.post('/login', async c => {
@@ -95,6 +102,9 @@ authEmailRoutes.post('/login', async c => {
   const b: any = await c.req.json(); const u: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(norm(b.email)).first()
   if (!u || !(await verifyPassword(String(b.password || ''), u.password_hash))) return c.json({ error: 'Invalid credentials' }, 401)
   if (u.status === 'blocked') return c.json({ error: 'Account blocked' }, 403)
-  if (!u.email_verified) { await sendCode(c, u); return c.json({ error: 'EMAIL_VERIFICATION_REQUIRED', verification_required: true, email: u.email }, 403) }
+  if (!u.email_verified) {
+    const mail = await sendCode(c, u)
+    return c.json({ error: 'EMAIL_VERIFICATION_REQUIRED', verification_required: true, email: u.email, email_sent: !!mail.sent?.ok, dev_code: mail.dev_code }, 403)
+  }
   return c.json({ token: await token(c, u), user: { id: u.id, email: u.email, full_name: u.full_name, role: u.role, verified: u.verified, email_verified: u.email_verified } })
 })
