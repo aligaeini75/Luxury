@@ -10,6 +10,23 @@ export const authEmailRoutes = new Hono<{ Bindings: Env }>()
 const norm = (v: any) => String(v || '').trim().toLowerCase()
 const code = () => String(Math.floor(100000 + Math.random() * 900000))
 
+async function ensureEmailSchema(c: any) {
+  await c.env.DB.prepare('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0').run().catch(() => {})
+  await c.env.DB.prepare('ALTER TABLE users ADD COLUMN email_verified_at TEXT').run().catch(() => {})
+  await c.env.DB.prepare(`CREATE TABLE IF NOT EXISTS email_confirmations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    code_digest TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    expires_at TEXT NOT NULL,
+    consumed_at TEXT,
+    created_at TEXT NOT NULL
+  )`).run()
+  await c.env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_email_confirmations_user ON email_confirmations(user_id, consumed_at, expires_at)').run().catch(() => {})
+  await c.env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_email_confirmations_email ON email_confirmations(email, consumed_at, expires_at)').run().catch(() => {})
+}
+
 async function sha(v: string) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v))
   return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('')
@@ -20,6 +37,7 @@ async function token(c: any, u: any) {
 }
 
 async function sendCode(c: any, u: any) {
+  await ensureEmailSchema(c)
   const t = now()
   const v = code()
   await c.env.DB.prepare('UPDATE email_confirmations SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL').bind(t, u.id).run()
@@ -29,6 +47,7 @@ async function sendCode(c: any, u: any) {
 }
 
 authEmailRoutes.post('/register', async c => {
+  await ensureEmailSchema(c)
   const b: any = await c.req.json()
   const email = norm(b.email)
   if (!email || !b.password) return c.json({ error: 'Email and password required' }, 400)
@@ -47,6 +66,7 @@ authEmailRoutes.post('/register', async c => {
 })
 
 authEmailRoutes.post('/verify-email', async c => {
+  await ensureEmailSchema(c)
   const b: any = await c.req.json(); const email = norm(b.email); const v = String(b.code || '').trim()
   const u: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(email).first()
   if (!u) return c.json({ error: 'حساب پیدا نشد.' }, 404)
@@ -62,6 +82,7 @@ authEmailRoutes.post('/verify-email', async c => {
 })
 
 authEmailRoutes.post('/resend-email-code', async c => {
+  await ensureEmailSchema(c)
   const b: any = await c.req.json(); const u: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(norm(b.email)).first()
   if (!u) return c.json({ error: 'حساب پیدا نشد.' }, 404)
   if (u.email_verified) return c.json({ success: true, already_verified: true })
@@ -70,6 +91,7 @@ authEmailRoutes.post('/resend-email-code', async c => {
 })
 
 authEmailRoutes.post('/login', async c => {
+  await ensureEmailSchema(c)
   const b: any = await c.req.json(); const u: any = await c.env.DB.prepare('SELECT * FROM users WHERE email=?').bind(norm(b.email)).first()
   if (!u || !(await verifyPassword(String(b.password || ''), u.password_hash))) return c.json({ error: 'Invalid credentials' }, 401)
   if (u.status === 'blocked') return c.json({ error: 'Account blocked' }, 403)
