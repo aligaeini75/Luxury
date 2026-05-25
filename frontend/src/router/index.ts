@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import Landing from '../features/public/Landing.vue'
 import Login from '../features/auth/Login.vue'
 import Register from '../features/auth/Register.vue'
+import VerifyEmail from '../features/auth/VerifyEmail.vue'
 import Terms from '../features/legal/Terms.vue'
 import WomanPublicProfile from '../features/public/WomanPublicProfile.vue'
 
@@ -46,6 +47,7 @@ export default createRouter({
     { path: '/', component: Landing },
     { path: '/login', component: Login },
     { path: '/register', component: Register },
+    { path: '/verify-email', component: VerifyEmail },
     { path: '/terms', component: Terms },
     { path: '/women/:id', component: WomanPublicProfile },
 
