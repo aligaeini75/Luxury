@@ -1,4 +1,5 @@
 @import './mobile-compact.css';
+@import './logo-placement.css';
 
 /* Readable UI scale override: loaded after the legacy compact pass. */
 html {
